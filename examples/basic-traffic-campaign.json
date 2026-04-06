@@ -1,0 +1,45 @@
+{
+  "name": "Basic Traffic Campaign",
+  "description": "A simple traffic campaign template for testing product pages",
+  "variables": {
+    "product_name": { "type": "string", "description": "Name of the product/IP being tested" },
+    "landing_url": { "type": "string", "description": "Landing page URL" },
+    "daily_budget": { "type": "number", "default": 2000, "description": "Daily budget in cents" },
+    "country": { "type": "string", "default": "US", "description": "Target country code" }
+  },
+  "campaign": {
+    "name": "{{product_name}} - Traffic Test",
+    "objective": "OUTCOME_TRAFFIC",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED",
+    "daily_budget": "{{daily_budget}}"
+  },
+  "adsets": [
+    {
+      "name": "{{product_name}} - Broad Audience",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{product_name}} - Primary Ad",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{product_name}} - Creative v1",
+        "title": "Check out {{product_name}}",
+        "body": "Discover {{product_name}} today. Click to learn more.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

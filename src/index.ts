@@ -10,6 +10,11 @@ import { registerAdSetCommands } from './commands/adsets';
 import { registerAdCommands } from './commands/ads';
 import { registerCreativeCommands } from './commands/creatives';
 import { registerInsightsCommands } from './commands/insights';
+import { registerImageCommands } from './commands/images';
+import { registerDeployCommands } from './commands/deploy';
+import { registerProjectCommands } from './commands/projects';
+import { registerMonitorCommands } from './commands/monitor';
+import { AdPilotError, ExitCode } from './utils/errors';
 
 const program = new Command();
 
@@ -36,6 +41,10 @@ registerAdSetCommands(program);
 registerAdCommands(program);
 registerCreativeCommands(program);
 registerInsightsCommands(program);
+registerImageCommands(program);
+registerDeployCommands(program);
+registerProjectCommands(program);
+registerMonitorCommands(program);
 
 // Global error handling
 program.exitOverride();
@@ -43,16 +52,24 @@ program.exitOverride();
 async function main() {
   try {
     await program.parseAsync(process.argv);
+    process.exit(ExitCode.SUCCESS);
   } catch (err: any) {
     if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') {
-      process.exit(0);
+      process.exit(ExitCode.SUCCESS);
     }
     if (err.code === 'commander.missingMandatoryOptionValue' || err.code === 'commander.missingArgument') {
       // Commander already printed the error
-      process.exit(1);
+      process.exit(ExitCode.USER_ERROR);
     }
+
+    if (err instanceof AdPilotError) {
+      console.error(chalk.red(`Error: ${err.message}`));
+      process.exit(err.exitCode);
+    }
+
+    // Unknown / unexpected errors default to exit code 1
     console.error(chalk.red(`Error: ${err.message}`));
-    process.exit(1);
+    process.exit(ExitCode.USER_ERROR);
   }
 }
 

@@ -1,0 +1,83 @@
+{
+  "name": "Multi-Variant A/B Test",
+  "description": "Tests multiple audience segments with multiple ad variants",
+  "variables": {
+    "product_name": { "type": "string" },
+    "landing_url": { "type": "string" },
+    "headline_1": { "type": "string", "description": "First headline variant" },
+    "headline_2": { "type": "string", "description": "Second headline variant" },
+    "body_text": { "type": "string", "description": "Ad body text" },
+    "daily_budget": { "type": "number", "default": 1500 },
+    "country": { "type": "string", "default": "US" }
+  },
+  "campaign": {
+    "name": "{{product_name}} - Multi-Variant Test",
+    "objective": "OUTCOME_TRAFFIC",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{product_name}} - Age 18-30",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": { "geo_locations": { "countries": ["{{country}}"] }, "age_min": 18, "age_max": 30 },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Age 31-45",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": { "geo_locations": { "countries": ["{{country}}"] }, "age_min": 31, "age_max": 45 },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Age 46-65",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": { "geo_locations": { "countries": ["{{country}}"] }, "age_min": 46, "age_max": 65 },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{product_name}} - Headline A / Age 18-30",
+      "adset_index": 0,
+      "creative": { "name": "{{product_name}} - HL-A", "title": "{{headline_1}}", "body": "{{body_text}}", "link_url": "{{landing_url}}", "call_to_action_type": "LEARN_MORE" },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Headline B / Age 18-30",
+      "adset_index": 0,
+      "creative": { "name": "{{product_name}} - HL-B", "title": "{{headline_2}}", "body": "{{body_text}}", "link_url": "{{landing_url}}", "call_to_action_type": "LEARN_MORE" },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Headline A / Age 31-45",
+      "adset_index": 1,
+      "creative": { "name": "{{product_name}} - HL-A v2", "title": "{{headline_1}}", "body": "{{body_text}}", "link_url": "{{landing_url}}", "call_to_action_type": "LEARN_MORE" },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Headline B / Age 31-45",
+      "adset_index": 1,
+      "creative": { "name": "{{product_name}} - HL-B v2", "title": "{{headline_2}}", "body": "{{body_text}}", "link_url": "{{landing_url}}", "call_to_action_type": "LEARN_MORE" },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Headline A / Age 46-65",
+      "adset_index": 2,
+      "creative": { "name": "{{product_name}} - HL-A v3", "title": "{{headline_1}}", "body": "{{body_text}}", "link_url": "{{landing_url}}", "call_to_action_type": "LEARN_MORE" },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Headline B / Age 46-65",
+      "adset_index": 2,
+      "creative": { "name": "{{product_name}} - HL-B v3", "title": "{{headline_2}}", "body": "{{body_text}}", "link_url": "{{landing_url}}", "call_to_action_type": "LEARN_MORE" },
+      "status": "PAUSED"
+    }
+  ]
+}

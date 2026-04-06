@@ -1,7 +1,20 @@
 import fetch from 'node-fetch';
 import { getConfig, getToken } from './config';
+import { ApiError } from '../utils/errors';
 
 const BASE_URL = 'https://graph.facebook.com';
+
+const RATE_LIMIT_CODES = new Set([4, 17, 32, 613, 80004]);
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRateLimitError(code: number, subcode?: number): boolean {
+  return RATE_LIMIT_CODES.has(code) || (subcode !== undefined && RATE_LIMIT_CODES.has(subcode));
+}
 
 export interface ApiResponse<T = any> {
   data?: T[];
@@ -78,19 +91,36 @@ export async function apiRequest<T = any>(
     };
   }
 
-  const response = await fetch(url, fetchOptions);
-  const data = (await response.json()) as ApiResponse<T>;
+  let lastError: ApiError | undefined;
 
-  if (data.error) {
-    const err = data.error;
-    throw new Error(
-      `[${err.code}] ${err.type}: ${err.message}${
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const response = await fetch(url, fetchOptions);
+    const data = (await response.json()) as ApiResponse<T>;
+
+    if (data.error) {
+      const err = data.error;
+      const errorMsg = `[${err.code}] ${err.type}: ${err.message}${
         err.error_subcode ? ` (subcode: ${err.error_subcode})` : ''
-      }`
-    );
+      }`;
+
+      if (isRateLimitError(err.code, err.error_subcode) && attempt < MAX_RETRIES) {
+        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
+        process.stderr.write(
+          `Rate limited (code ${err.code}). Retrying in ${delayMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...\n`
+        );
+        await sleep(delayMs);
+        lastError = new ApiError(errorMsg);
+        continue;
+      }
+
+      throw new ApiError(errorMsg);
+    }
+
+    return data;
   }
 
-  return data;
+  // Should only be reached if all retries exhausted (guarded above, but satisfies TS)
+  throw lastError || new ApiError('Request failed after maximum retries.');
 }
 
 export async function apiGet<T = any>(

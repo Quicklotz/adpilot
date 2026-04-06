@@ -13,6 +13,7 @@ import {
   BID_STRATEGIES,
 } from '../utils/helpers';
 import { statusColor } from '../utils/output';
+import { validateObjective, validateStatus } from '../utils/validators';
 
 export function registerCampaignCommands(program: Command): void {
   const campaigns = program
@@ -174,6 +175,9 @@ export function registerCampaignCommands(program: Command): void {
       const spinner = createSpinner('Creating campaign...');
       spinner.start();
       try {
+        validateObjective(opts.objective);
+        validateStatus(opts.status);
+
         const accountId = opts.accountId || getAdAccountId();
         const body: Record<string, any> = {
           name: opts.name,
@@ -318,6 +322,67 @@ export function registerCampaignCommands(program: Command): void {
         await apiDelete(campaignId);
         spinner.stop();
         success(`Campaign ${campaignId} deleted.`);
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // COPY / DUPLICATE
+  campaigns
+    .command('copy <campaignId>')
+    .alias('duplicate')
+    .description('Copy/duplicate a campaign')
+    .option('--deep', 'Deep copy (include child ad sets and ads)')
+    .option('--rename-prefix <prefix>', 'Prefix for copied campaign name')
+    .option('--rename-suffix <suffix>', 'Suffix for copied campaign name')
+    .option('--status <status>', 'Status of copy: ACTIVE, PAUSED (default PAUSED)', 'PAUSED')
+    .option('--json', 'Output as JSON')
+    .action(async (campaignId, opts) => {
+      const spinner = createSpinner('Copying campaign...');
+      spinner.start();
+      try {
+        const body: Record<string, any> = {};
+
+        if (opts.deep) {
+          body.deep_copy = true;
+        }
+
+        if (opts.renamePrefix || opts.renameSuffix) {
+          body.rename_strategy = 'DEEP_RENAME';
+          if (opts.renamePrefix) body.rename_prefix = opts.renamePrefix;
+          if (opts.renameSuffix) body.rename_suffix = opts.renameSuffix;
+        } else {
+          body.rename_strategy = 'NO_RENAME';
+        }
+
+        const statusMap: Record<string, string> = {
+          ACTIVE: 'ACTIVE',
+          PAUSED: 'PAUSED',
+          INHERITED: 'INHERITED_FROM_SOURCE',
+          INHERITED_FROM_SOURCE: 'INHERITED_FROM_SOURCE',
+        };
+        body.status_option = statusMap[opts.status.toUpperCase()] || 'PAUSED';
+
+        const data = await apiPost(`${campaignId}/copies`, body);
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          const copiedIds = data.copied_campaign_id
+            ? [data.copied_campaign_id]
+            : data.campaign_group_id
+            ? [data.campaign_group_id]
+            : [];
+          if (copiedIds.length > 0) {
+            success(`Campaign copied. New campaign ID: ${copiedIds.join(', ')}`);
+          } else {
+            success('Campaign copy request submitted.');
+            output(data, 'json');
+          }
+        }
       } catch (err: any) {
         spinner.stop();
         error(err.message);

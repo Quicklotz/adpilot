@@ -13,6 +13,7 @@ import {
   BID_STRATEGIES,
 } from '../utils/helpers';
 import { statusColor } from '../utils/output';
+import { validateBillingEvent, validateOptimizationGoal, validateJson } from '../utils/validators';
 
 export function registerAdSetCommands(program: Command): void {
   const adsets = program
@@ -188,6 +189,10 @@ export function registerAdSetCommands(program: Command): void {
       const spinner = createSpinner('Creating ad set...');
       spinner.start();
       try {
+        validateBillingEvent(opts.billingEvent);
+        validateOptimizationGoal(opts.optimizationGoal);
+        validateJson(opts.targeting);
+
         const accountId = opts.accountId || getAdAccountId();
         const body: Record<string, any> = {
           name: opts.name,

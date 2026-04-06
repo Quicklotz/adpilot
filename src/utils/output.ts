@@ -1,4 +1,6 @@
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 import Table from 'cli-table3';
 import { getConfig } from '../lib/config';
 
@@ -85,6 +87,24 @@ export function warn(message: string): void {
 
 export function info(message: string): void {
   console.log(chalk.blue('ℹ ') + message);
+}
+
+export function writeCsv(
+  filePath: string,
+  headers: string[],
+  rows: (string | number | undefined | null)[][]
+): void {
+  const escape = (val: any) => {
+    const str = String(val ?? '');
+    return str.includes(',') || str.includes('"') || str.includes('\n')
+      ? `"${str.replace(/"/g, '""')}"`
+      : str;
+  };
+  const lines = [
+    headers.map(escape).join(','),
+    ...rows.map((row) => row.map(escape).join(',')),
+  ];
+  fs.writeFileSync(filePath, lines.join('\n') + '\n');
 }
 
 export function statusColor(status: string): string {

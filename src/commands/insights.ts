@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { apiGet } from '../lib/api';
 import { getAdAccountId } from '../lib/config';
-import { output, printTable, error } from '../utils/output';
+import { output, printTable, error, success, writeCsv } from '../utils/output';
 import {
   createSpinner,
   formatBudget,
@@ -63,6 +63,7 @@ export function registerInsightsCommands(program: Command): void {
     .option('--level <level>', 'Aggregation: account, campaign, adset, ad', 'account')
     .option('--limit <n>', 'Max results', '50')
     .option('--json', 'Output as JSON')
+    .option('--csv <filename>', 'Export results to CSV file')
     .action(async (opts) => {
       const spinner = createSpinner('Fetching insights...');
       spinner.start();
@@ -97,7 +98,11 @@ export function registerInsightsCommands(program: Command): void {
         const data = await apiGet(`${accountId}/insights`, params);
         spinner.stop();
 
-        if (opts.json) {
+        if (opts.csv) {
+          const { headers, rows } = buildInsightsCsvData(data.data || [], opts.level);
+          writeCsv(opts.csv, headers, rows);
+          success(`Wrote ${rows.length} row(s) to ${opts.csv}`);
+        } else if (opts.json) {
           output(data.data, 'json');
         } else {
           formatInsightsTable(data.data || [], opts.level);
@@ -120,6 +125,7 @@ export function registerInsightsCommands(program: Command): void {
     .option('--breakdowns <breakdowns>', 'Comma-separated breakdowns')
     .option('--limit <n>', 'Max results', '50')
     .option('--json', 'Output as JSON')
+    .option('--csv <filename>', 'Export results to CSV file')
     .action(async (campaignId, opts) => {
       const spinner = createSpinner('Fetching campaign insights...');
       spinner.start();
@@ -148,7 +154,11 @@ export function registerInsightsCommands(program: Command): void {
         const data = await apiGet(`${campaignId}/insights`, params);
         spinner.stop();
 
-        if (opts.json) {
+        if (opts.csv) {
+          const { headers, rows } = buildInsightsCsvData(data.data || [], 'campaign');
+          writeCsv(opts.csv, headers, rows);
+          success(`Wrote ${rows.length} row(s) to ${opts.csv}`);
+        } else if (opts.json) {
           output(data.data, 'json');
         } else {
           formatInsightsTable(data.data || [], 'campaign');
@@ -171,6 +181,7 @@ export function registerInsightsCommands(program: Command): void {
     .option('--breakdowns <breakdowns>', 'Comma-separated breakdowns')
     .option('--limit <n>', 'Max results', '50')
     .option('--json', 'Output as JSON')
+    .option('--csv <filename>', 'Export results to CSV file')
     .action(async (adSetId, opts) => {
       const spinner = createSpinner('Fetching ad set insights...');
       spinner.start();
@@ -199,7 +210,11 @@ export function registerInsightsCommands(program: Command): void {
         const data = await apiGet(`${adSetId}/insights`, params);
         spinner.stop();
 
-        if (opts.json) {
+        if (opts.csv) {
+          const { headers, rows } = buildInsightsCsvData(data.data || [], 'adset');
+          writeCsv(opts.csv, headers, rows);
+          success(`Wrote ${rows.length} row(s) to ${opts.csv}`);
+        } else if (opts.json) {
           output(data.data, 'json');
         } else {
           formatInsightsTable(data.data || [], 'adset');
@@ -222,6 +237,7 @@ export function registerInsightsCommands(program: Command): void {
     .option('--breakdowns <breakdowns>', 'Comma-separated breakdowns')
     .option('--limit <n>', 'Max results', '50')
     .option('--json', 'Output as JSON')
+    .option('--csv <filename>', 'Export results to CSV file')
     .action(async (adId, opts) => {
       const spinner = createSpinner('Fetching ad insights...');
       spinner.start();
@@ -250,7 +266,11 @@ export function registerInsightsCommands(program: Command): void {
         const data = await apiGet(`${adId}/insights`, params);
         spinner.stop();
 
-        if (opts.json) {
+        if (opts.csv) {
+          const { headers, rows } = buildInsightsCsvData(data.data || [], 'ad');
+          writeCsv(opts.csv, headers, rows);
+          success(`Wrote ${rows.length} row(s) to ${opts.csv}`);
+        } else if (opts.json) {
           output(data.data, 'json');
         } else {
           formatInsightsTable(data.data || [], 'ad');
@@ -316,4 +336,58 @@ function formatInsightsTable(data: any[], level: string): void {
   });
 
   printTable(headers, rows, `${level.charAt(0).toUpperCase() + level.slice(1)} Insights`);
+}
+
+function buildInsightsCsvData(
+  data: any[],
+  level: string
+): { headers: string[]; rows: (string | number | undefined | null)[][] } {
+  const nameField =
+    level === 'campaign'
+      ? 'campaign_name'
+      : level === 'adset'
+      ? 'adset_name'
+      : level === 'ad'
+      ? 'ad_name'
+      : null;
+
+  const headers = [
+    ...(nameField ? ['Name'] : []),
+    'Impressions',
+    'Clicks',
+    'Spend',
+    'CPC',
+    'CPM',
+    'CTR',
+    'Reach',
+    'Frequency',
+    'Actions',
+    'Date Start',
+    'Date Stop',
+  ];
+
+  const rows = data.map((row: any) => {
+    const actions = row.actions
+      ? row.actions
+          .map((a: any) => `${a.action_type}: ${a.value}`)
+          .join('; ')
+      : '';
+
+    return [
+      ...(nameField ? [row[nameField] || ''] : []),
+      row.impressions || '0',
+      row.clicks || '0',
+      row.spend || '0.00',
+      row.cpc || '',
+      row.cpm || '',
+      row.ctr || '',
+      row.reach || '0',
+      row.frequency || '',
+      actions,
+      row.date_start || '',
+      row.date_stop || '',
+    ];
+  });
+
+  return { headers, rows };
 }
