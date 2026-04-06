@@ -8,7 +8,7 @@ import { success, error, warn, info, printJson, printTable, printRecord } from '
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-interface DeployResult {
+export interface DeployResult {
   campaign_id?: string;
   adset_ids: string[];
   creative_ids: string[];
@@ -22,7 +22,7 @@ function parseVarFlags(rawVars: string[]): Record<string, string> {
   return parseKeyValue(rawVars);
 }
 
-function printDryRun(template: AdPilotTemplate): void {
+export function printDryRun(template: AdPilotTemplate): void {
   console.log(chalk.bold.cyan('\n--- Dry Run: Deploy Plan ---\n'));
 
   // Campaign
@@ -84,7 +84,7 @@ function printDryRun(template: AdPilotTemplate): void {
   console.log(chalk.bold.cyan('\n--- End Dry Run ---\n'));
 }
 
-function printDeployResult(result: DeployResult, template: AdPilotTemplate, asJson: boolean): void {
+export function printDeployResult(result: DeployResult, template: AdPilotTemplate, asJson: boolean): void {
   if (asJson) {
     printJson(result);
     return;
@@ -119,7 +119,7 @@ function printDeployResult(result: DeployResult, template: AdPilotTemplate, asJs
   console.log(chalk.bold.green('\n--- Done ---\n'));
 }
 
-function printPartialResult(result: DeployResult, template: AdPilotTemplate): void {
+export function printPartialResult(result: DeployResult, template: AdPilotTemplate): void {
   console.log(chalk.bold.yellow('\n--- Partial Deploy (cleanup may be needed) ---\n'));
 
   if (result.campaign_id) {
@@ -142,7 +142,7 @@ function printPartialResult(result: DeployResult, template: AdPilotTemplate): vo
 
 // ── Deploy Logic ────────────────────────────────────────────────────────────
 
-async function executeDeploy(
+export async function executeDeploy(
   template: AdPilotTemplate,
   accountId: string
 ): Promise<DeployResult> {

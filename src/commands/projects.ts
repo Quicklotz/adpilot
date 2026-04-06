@@ -11,7 +11,7 @@ import {
   unlinkCampaign,
   IPProject,
 } from '../lib/registry';
-import { output, printTable, printRecord, printJson, success, error, warn } from '../utils/output';
+import { output, printTable, printRecord, printJson, success, error, warn, info, writeCsv } from '../utils/output';
 import { createSpinner, formatBudget, DATE_PRESETS } from '../utils/helpers';
 
 export function registerProjectCommands(program: Command): void {
@@ -338,6 +338,244 @@ export function registerProjectCommands(program: Command): void {
         process.exit(1);
       }
     });
+
+  // DASHBOARD
+  projects
+    .command('dashboard')
+    .description('Cross-IP performance dashboard showing aggregated metrics for all projects')
+    .option(
+      '--date-preset <preset>',
+      `Date preset: ${DATE_PRESETS.join(', ')}`,
+      'last_7d'
+    )
+    .option('--sort <field>', 'Sort by: spend, clicks, ctr, cpc, demand_score', 'demand_score')
+    .option('--json', 'Output as JSON')
+    .option('--csv <file>', 'Export to CSV file')
+    .action(async (opts) => {
+      const spinner = createSpinner('Building cross-IP performance dashboard...');
+      spinner.start();
+      try {
+        const allProjects = listProjects();
+
+        if (allProjects.length === 0) {
+          spinner.stop();
+          warn('No projects found. Create one with: adpilot projects create --name <name>');
+          return;
+        }
+
+        const insightsFields = 'campaign_name,impressions,clicks,spend,cpc,ctr,reach,actions';
+        const params: Record<string, any> = {
+          fields: insightsFields,
+          date_preset: opts.datePreset,
+        };
+
+        interface DashboardRow {
+          projectId: string;
+          projectName: string;
+          status: string;
+          campaigns: number;
+          totalSpend: number;
+          totalImpressions: number;
+          totalClicks: number;
+          totalReach: number;
+          avgCtr: number;
+          avgCpc: number;
+          estimatedCpa: number;
+          demandScore: number;
+          hasData: boolean;
+        }
+
+        const dashboardData: DashboardRow[] = [];
+
+        for (const project of allProjects) {
+          if (project.campaignIds.length === 0) {
+            dashboardData.push({
+              projectId: project.id,
+              projectName: project.name,
+              status: project.status,
+              campaigns: 0,
+              totalSpend: 0,
+              totalImpressions: 0,
+              totalClicks: 0,
+              totalReach: 0,
+              avgCtr: 0,
+              avgCpc: 0,
+              estimatedCpa: 0,
+              demandScore: 0,
+              hasData: false,
+            });
+            continue;
+          }
+
+          let totalSpend = 0;
+          let totalImpressions = 0;
+          let totalClicks = 0;
+          let totalReach = 0;
+          let totalActions = 0;
+          let hasAnyData = false;
+
+          for (const campaignId of project.campaignIds) {
+            try {
+              const data = await apiGet(`${campaignId}/insights`, params);
+              const rows = data.data || [];
+              for (const row of rows) {
+                hasAnyData = true;
+                totalSpend += parseFloat(row.spend || '0');
+                totalImpressions += parseInt(row.impressions || '0', 10);
+                totalClicks += parseInt(row.clicks || '0', 10);
+                totalReach += parseInt(row.reach || '0', 10);
+
+                if (row.actions && Array.isArray(row.actions)) {
+                  for (const action of row.actions) {
+                    totalActions += parseInt(action.value || '0', 10);
+                  }
+                }
+              }
+            } catch {
+              // Skip campaigns with errors
+            }
+          }
+
+          const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+          const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+          const estimatedCpa = totalActions > 0 ? totalSpend / totalActions : 0;
+          const demandScore = totalSpend > 0 ? (totalClicks / totalSpend) * 100 : 0;
+
+          dashboardData.push({
+            projectId: project.id,
+            projectName: project.name,
+            status: project.status,
+            campaigns: project.campaignIds.length,
+            totalSpend,
+            totalImpressions,
+            totalClicks,
+            totalReach,
+            avgCtr,
+            avgCpc,
+            estimatedCpa,
+            demandScore,
+            hasData: hasAnyData,
+          });
+        }
+
+        // Sort
+        const sortField = opts.sort || 'demand_score';
+        dashboardData.sort((a, b) => {
+          // Projects with no data go to the bottom
+          if (a.hasData && !b.hasData) return -1;
+          if (!a.hasData && b.hasData) return 1;
+
+          switch (sortField) {
+            case 'spend':
+              return b.totalSpend - a.totalSpend;
+            case 'clicks':
+              return b.totalClicks - a.totalClicks;
+            case 'ctr':
+              return b.avgCtr - a.avgCtr;
+            case 'cpc':
+              // Lower CPC is better, so ascending
+              return a.avgCpc - b.avgCpc;
+            case 'demand_score':
+            default:
+              return b.demandScore - a.demandScore;
+          }
+        });
+
+        spinner.stop();
+
+        // JSON output
+        if (opts.json) {
+          printJson(dashboardData);
+          return;
+        }
+
+        // CSV export
+        if (opts.csv) {
+          const csvHeaders = [
+            'Rank', 'Project', 'Status', 'Campaigns', 'Spend',
+            'Impressions', 'Clicks', 'Reach', 'CTR', 'CPC',
+            'Est. CPA', 'Demand Score',
+          ];
+          const csvRows = dashboardData.map((d, i) => [
+            String(i + 1),
+            d.projectName,
+            d.status,
+            String(d.campaigns),
+            d.hasData ? `$${d.totalSpend.toFixed(2)}` : '-',
+            d.hasData ? String(d.totalImpressions) : '-',
+            d.hasData ? String(d.totalClicks) : '-',
+            d.hasData ? String(d.totalReach) : '-',
+            d.hasData ? `${d.avgCtr.toFixed(2)}%` : '-',
+            d.hasData ? `$${d.avgCpc.toFixed(2)}` : '-',
+            d.hasData && d.estimatedCpa > 0 ? `$${d.estimatedCpa.toFixed(2)}` : '-',
+            d.hasData ? d.demandScore.toFixed(2) : '-',
+          ]);
+          writeCsv(opts.csv, csvHeaders, csvRows);
+          success(`Dashboard exported to ${opts.csv}`);
+          return;
+        }
+
+        // Table output
+        console.log(chalk.bold.cyan('\nCross-IP Performance Dashboard'));
+        console.log(chalk.gray(`  Date preset: ${opts.datePreset}  |  Sorted by: ${sortField}\n`));
+
+        if (dashboardData.length === 0) {
+          warn('No projects to display.');
+          return;
+        }
+
+        const tableRows = dashboardData.map((d, i) => {
+          const demandScoreStr = d.hasData
+            ? demandScoreColor(d.demandScore)
+            : chalk.gray('-');
+
+          return [
+            String(i + 1),
+            d.projectName,
+            projectStatusColor(d.status),
+            String(d.campaigns),
+            d.hasData ? `$${d.totalSpend.toFixed(2)}` : chalk.gray('-'),
+            d.hasData ? String(d.totalClicks) : chalk.gray('-'),
+            d.hasData ? `${d.avgCtr.toFixed(2)}%` : chalk.gray('-'),
+            d.hasData ? `$${d.avgCpc.toFixed(2)}` : chalk.gray('-'),
+            d.hasData && d.estimatedCpa > 0 ? `$${d.estimatedCpa.toFixed(2)}` : chalk.gray('-'),
+            demandScoreStr,
+          ];
+        });
+
+        printTable(
+          ['#', 'Project', 'Status', 'Camps', 'Spend', 'Clicks', 'CTR', 'CPC', 'Est. CPA', 'Demand'],
+          tableRows,
+          'Project Rankings'
+        );
+
+        // Legend
+        console.log(chalk.gray('  Demand Score = (clicks / spend) * 100'));
+        console.log(
+          `  ${chalk.green('Green')} > 2  |  ${chalk.yellow('Yellow')} 1-2  |  ${chalk.red('Red')} < 1\n`
+        );
+
+        // Summary stats
+        const projectsWithData = dashboardData.filter((d) => d.hasData);
+        const totalSpendAll = projectsWithData.reduce((s, d) => s + d.totalSpend, 0);
+        const totalClicksAll = projectsWithData.reduce((s, d) => s + d.totalClicks, 0);
+        info(
+          `${allProjects.length} project(s), ${projectsWithData.length} with data, ` +
+          `$${totalSpendAll.toFixed(2)} total spend, ${totalClicksAll} total clicks`
+        );
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+}
+
+function demandScoreColor(score: number): string {
+  const formatted = score.toFixed(2);
+  if (score > 2) return chalk.green(formatted);
+  if (score >= 1) return chalk.yellow(formatted);
+  return chalk.red(formatted);
 }
 
 function projectStatusColor(status: string): string {

@@ -14,6 +14,11 @@ import { registerImageCommands } from './commands/images';
 import { registerDeployCommands } from './commands/deploy';
 import { registerProjectCommands } from './commands/projects';
 import { registerMonitorCommands } from './commands/monitor';
+import { registerAudienceCommands } from './commands/audiences';
+import { registerLabelCommands } from './commands/labels';
+import { registerGenerateCommands } from './commands/generate';
+import { registerCompletionCommands } from './commands/completions';
+import { registerBulkCommands } from './commands/bulk';
 import { AdPilotError, ExitCode } from './utils/errors';
 
 const program = new Command();
@@ -45,6 +50,11 @@ registerImageCommands(program);
 registerDeployCommands(program);
 registerProjectCommands(program);
 registerMonitorCommands(program);
+registerAudienceCommands(program);
+registerLabelCommands(program);
+registerGenerateCommands(program);
+registerCompletionCommands(program);
+registerBulkCommands(program);
 
 // Global error handling
 program.exitOverride();
