@@ -1,0 +1,93 @@
+{
+  "name": "E-Commerce Sales Campaign",
+  "description": "Conversion-optimized campaign for e-commerce product sales with retargeting, broad, and interest-based audiences",
+  "variables": {
+    "product_name": { "type": "string", "description": "Name of the product being sold" },
+    "product_url": { "type": "string", "description": "Product page URL" },
+    "price": { "type": "string", "default": "$29.99", "description": "Product price for ad copy" },
+    "daily_budget": { "type": "number", "default": 3000, "description": "Daily budget in cents per ad set" },
+    "country": { "type": "string", "default": "US", "description": "Target country code" }
+  },
+  "campaign": {
+    "name": "{{product_name}} - Sales",
+    "objective": "OUTCOME_SALES",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{product_name}} - Retargeting 25-55",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "OFFSITE_CONVERSIONS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 25,
+        "age_max": 55
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Broad 18-65",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "OFFSITE_CONVERSIONS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Interest 18-45",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "OFFSITE_CONVERSIONS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 45
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{product_name}} - Retargeting Ad",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{product_name}} - Retarget Creative",
+        "title": "Still Thinking About {{product_name}}?",
+        "body": "You viewed {{product_name}} recently. Complete your purchase today for just {{price}}. Free shipping included.",
+        "link_url": "{{product_url}}",
+        "call_to_action_type": "SHOP_NOW"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Broad Ad",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{product_name}} - Broad Creative",
+        "title": "Introducing {{product_name}} — Only {{price}}",
+        "body": "Discover the {{product_name}} everyone is talking about. Order now and get free shipping on your first purchase.",
+        "link_url": "{{product_url}}",
+        "call_to_action_type": "SHOP_NOW"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Interest Ad",
+      "adset_index": 2,
+      "creative": {
+        "name": "{{product_name}} - Interest Creative",
+        "title": "{{product_name}} — Made for You",
+        "body": "Looking for something special? {{product_name}} is designed with you in mind. Now just {{price}}.",
+        "link_url": "{{product_url}}",
+        "call_to_action_type": "SHOP_NOW"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

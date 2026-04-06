@@ -33,6 +33,8 @@ import { registerLeadsCommands } from './commands/leads';
 import { registerSplitsCommands } from './commands/splits';
 import { registerTargetingCommands } from './commands/targeting';
 import { registerWebhookCommands } from './commands/webhooks';
+import { registerSetupCommands } from './commands/setup';
+import { registerDoctorCommands } from './commands/doctor';
 import { AdPilotError, ExitCode } from './utils/errors';
 
 const program = new Command();
@@ -83,6 +85,8 @@ registerLeadsCommands(program);
 registerSplitsCommands(program);
 registerTargetingCommands(program);
 registerWebhookCommands(program);
+registerSetupCommands(program);
+registerDoctorCommands(program);
 
 // Global error handling
 program.exitOverride();

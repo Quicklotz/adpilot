@@ -1,0 +1,147 @@
+{
+  "name": "Scale Winning Ad to New Markets",
+  "description": "Template for scaling a proven winning ad creative into multiple countries/markets",
+  "variables": {
+    "product_name": { "type": "string", "description": "Name of the product or service" },
+    "winning_headline": { "type": "string", "description": "The proven headline from your winning ad" },
+    "winning_body": { "type": "string", "description": "The proven body copy from your winning ad" },
+    "landing_url": { "type": "string", "description": "Landing page URL" },
+    "daily_budget": { "type": "number", "default": 2500, "description": "Daily budget in cents per ad set ($25/day)" },
+    "image_hash": { "type": "string", "description": "Meta image hash of the winning creative" }
+  },
+  "campaign": {
+    "name": "{{product_name}} - Scale Winner",
+    "objective": "OUTCOME_TRAFFIC",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{product_name}} - US Market",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["US"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - UK Market",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["GB"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - CA Market",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["CA"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - AU Market",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["AU"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - DE Market",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["DE"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{product_name}} - Winner / US",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{product_name}} - Winner Creative US",
+        "title": "{{winning_headline}}",
+        "body": "{{winning_body}}",
+        "link_url": "{{landing_url}}",
+        "image_hash": "{{image_hash}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Winner / UK",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{product_name}} - Winner Creative UK",
+        "title": "{{winning_headline}}",
+        "body": "{{winning_body}}",
+        "link_url": "{{landing_url}}",
+        "image_hash": "{{image_hash}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Winner / CA",
+      "adset_index": 2,
+      "creative": {
+        "name": "{{product_name}} - Winner Creative CA",
+        "title": "{{winning_headline}}",
+        "body": "{{winning_body}}",
+        "link_url": "{{landing_url}}",
+        "image_hash": "{{image_hash}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Winner / AU",
+      "adset_index": 3,
+      "creative": {
+        "name": "{{product_name}} - Winner Creative AU",
+        "title": "{{winning_headline}}",
+        "body": "{{winning_body}}",
+        "link_url": "{{landing_url}}",
+        "image_hash": "{{image_hash}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Winner / DE",
+      "adset_index": 4,
+      "creative": {
+        "name": "{{product_name}} - Winner Creative DE",
+        "title": "{{winning_headline}}",
+        "body": "{{winning_body}}",
+        "link_url": "{{landing_url}}",
+        "image_hash": "{{image_hash}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

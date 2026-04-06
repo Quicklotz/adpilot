@@ -1,0 +1,95 @@
+{
+  "name": "App Install Campaign",
+  "description": "Mobile app install campaign targeting iOS and Android users with platform-specific ad sets",
+  "variables": {
+    "app_name": { "type": "string", "description": "Name of the mobile app" },
+    "app_store_url": { "type": "string", "description": "Apple App Store URL" },
+    "play_store_url": { "type": "string", "description": "Google Play Store URL" },
+    "daily_budget": { "type": "number", "default": 2000, "description": "Daily budget in cents per ad set" },
+    "country": { "type": "string", "default": "US", "description": "Target country code" }
+  },
+  "campaign": {
+    "name": "{{app_name}} - App Install",
+    "objective": "OUTCOME_APP_PROMOTION",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{app_name}} - iOS Users",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "APP_INSTALLS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 55,
+        "user_os": ["iOS"]
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{app_name}} - Android Users",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "APP_INSTALLS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 55,
+        "user_os": ["Android"]
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{app_name}} - iOS / Download CTA",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{app_name}} - iOS Creative A",
+        "title": "Download {{app_name}} on the App Store",
+        "body": "Join millions using {{app_name}} to simplify their day. Free to download — get started in seconds.",
+        "link_url": "{{app_store_url}}",
+        "call_to_action_type": "INSTALL_MOBILE_APP"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{app_name}} - iOS / Use Now CTA",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{app_name}} - iOS Creative B",
+        "title": "{{app_name}} — Your New Favorite App",
+        "body": "See why {{app_name}} is the top-rated app in its category. Download free today.",
+        "link_url": "{{app_store_url}}",
+        "call_to_action_type": "USE_APP"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{app_name}} - Android / Download CTA",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{app_name}} - Android Creative A",
+        "title": "Get {{app_name}} on Google Play",
+        "body": "Join millions using {{app_name}} to simplify their day. Free to download — get started in seconds.",
+        "link_url": "{{play_store_url}}",
+        "call_to_action_type": "INSTALL_MOBILE_APP"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{app_name}} - Android / Use Now CTA",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{app_name}} - Android Creative B",
+        "title": "{{app_name}} — Your New Favorite App",
+        "body": "See why {{app_name}} is the top-rated app in its category. Download free today.",
+        "link_url": "{{play_store_url}}",
+        "call_to_action_type": "USE_APP"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

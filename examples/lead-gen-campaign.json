@@ -1,0 +1,93 @@
+{
+  "name": "Lead Generation Campaign",
+  "description": "Lead generation campaign with form-based ads targeting broad and lookalike audiences",
+  "variables": {
+    "product_name": { "type": "string", "description": "Name of the product or service" },
+    "landing_url": { "type": "string", "description": "Landing page URL with lead form" },
+    "daily_budget": { "type": "number", "default": 2500, "description": "Daily budget in cents per ad set" },
+    "country": { "type": "string", "default": "US", "description": "Target country code" },
+    "form_description": { "type": "string", "default": "Sign up to learn more", "description": "Lead form description text" }
+  },
+  "campaign": {
+    "name": "{{product_name}} - Lead Gen",
+    "objective": "OUTCOME_LEADS",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{product_name}} - Broad 18-45",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LEAD_GENERATION",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 45
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Lookalike 25-55",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LEAD_GENERATION",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 25,
+        "age_max": 55
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{product_name}} - Broad / Headline A",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{product_name}} - Lead Creative A",
+        "title": "Get Started with {{product_name}}",
+        "body": "{{form_description}}. Fill out the form and we'll be in touch within 24 hours.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "SIGN_UP"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Broad / Headline B",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{product_name}} - Lead Creative B",
+        "title": "Ready for {{product_name}}? Let's Talk",
+        "body": "{{form_description}}. Join thousands of satisfied customers who made the switch.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "SIGN_UP"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Lookalike / Headline A",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{product_name}} - Lead Creative C",
+        "title": "People Like You Love {{product_name}}",
+        "body": "{{form_description}}. See why people similar to you are choosing {{product_name}}.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "SIGN_UP"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{product_name}} - Lookalike / Headline B",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{product_name}} - Lead Creative D",
+        "title": "{{product_name}} — Free Consultation",
+        "body": "{{form_description}}. No commitment required. Get your free personalized recommendation.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "SIGN_UP"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

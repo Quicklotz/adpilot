@@ -1,0 +1,93 @@
+{
+  "name": "Brand Awareness Campaign",
+  "description": "Low-budget brand awareness campaign for new IP validation across age demographics",
+  "variables": {
+    "brand_name": { "type": "string", "description": "Brand or product name" },
+    "website_url": { "type": "string", "description": "Brand website URL" },
+    "tagline": { "type": "string", "default": "Discover something new", "description": "Brand tagline for ad copy" },
+    "daily_budget": { "type": "number", "default": 1000, "description": "Daily budget in cents per ad set ($10/day)" },
+    "country": { "type": "string", "default": "US", "description": "Target country code" }
+  },
+  "campaign": {
+    "name": "{{brand_name}} - Brand Awareness",
+    "objective": "OUTCOME_AWARENESS",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{brand_name}} - Young Adults 18-30",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "REACH",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 18,
+        "age_max": 30
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{brand_name}} - Adults 31-50",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "REACH",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 31,
+        "age_max": 50
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{brand_name}} - Mature 51-65",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "REACH",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{country}}"] },
+        "age_min": 51,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{brand_name}} - Young Adults Ad",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{brand_name}} - Awareness Creative Young",
+        "title": "{{brand_name}} — {{tagline}}",
+        "body": "Meet {{brand_name}}. We're building something you'll love. Visit us to learn what we're about.",
+        "link_url": "{{website_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{brand_name}} - Adults Ad",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{brand_name}} - Awareness Creative Mid",
+        "title": "{{brand_name}} — {{tagline}}",
+        "body": "Introducing {{brand_name}}. A fresh approach designed for the way you live. See what makes us different.",
+        "link_url": "{{website_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{brand_name}} - Mature Ad",
+      "adset_index": 2,
+      "creative": {
+        "name": "{{brand_name}} - Awareness Creative Mature",
+        "title": "{{brand_name}} — {{tagline}}",
+        "body": "{{brand_name}} is here. Quality and reliability you can count on. Learn more about our story.",
+        "link_url": "{{website_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

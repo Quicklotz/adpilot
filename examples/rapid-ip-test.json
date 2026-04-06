@@ -1,0 +1,213 @@
+{
+  "name": "Rapid IP Validation Test",
+  "description": "AI pipeline template for quickly validating new IP/product ideas across demographics with multiple messaging hooks",
+  "variables": {
+    "ip_name": { "type": "string", "description": "Name of the IP or product concept being validated" },
+    "ip_description": { "type": "string", "description": "Short description of the IP for ad body copy" },
+    "landing_url": { "type": "string", "description": "Landing page URL for the IP test" },
+    "daily_budget": { "type": "number", "default": 1500, "description": "Daily budget in cents per ad set ($15/day)" },
+    "countries": { "type": "string", "default": "US", "description": "Target country code(s)" }
+  },
+  "campaign": {
+    "name": "{{ip_name}} - Rapid IP Test",
+    "objective": "OUTCOME_TRAFFIC",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{ip_name}} - Broad 18-65",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{countries}}"] },
+        "age_min": 18,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Young 18-30",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{countries}}"] },
+        "age_min": 18,
+        "age_max": 30
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Middle 31-50",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{countries}}"] },
+        "age_min": 31,
+        "age_max": 50
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Senior 51-65",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{daily_budget}}",
+      "targeting": {
+        "geo_locations": { "countries": ["{{countries}}"] },
+        "age_min": 51,
+        "age_max": 65
+      },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{ip_name}} - Broad / Problem-Aware",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{ip_name}} - Problem Hook Broad",
+        "title": "Tired of the Same Old Problem?",
+        "body": "{{ip_description}} — finally, a solution that actually works. See how {{ip_name}} tackles the issue head-on.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Broad / Solution-Aware",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{ip_name}} - Solution Hook Broad",
+        "title": "Meet {{ip_name}} — The Better Way",
+        "body": "{{ip_description}}. We built {{ip_name}} so you don't have to settle. See the difference for yourself.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Broad / Curiosity",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{ip_name}} - Curiosity Hook Broad",
+        "title": "What If There Was a Better Way?",
+        "body": "{{ip_description}}. People are calling {{ip_name}} a game-changer. Find out why.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Young / Problem-Aware",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{ip_name}} - Problem Hook Young",
+        "title": "Tired of the Same Old Problem?",
+        "body": "{{ip_description}} — finally, a solution that actually works. See how {{ip_name}} tackles the issue head-on.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Young / Solution-Aware",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{ip_name}} - Solution Hook Young",
+        "title": "Meet {{ip_name}} — The Better Way",
+        "body": "{{ip_description}}. We built {{ip_name}} so you don't have to settle. See the difference for yourself.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Young / Curiosity",
+      "adset_index": 1,
+      "creative": {
+        "name": "{{ip_name}} - Curiosity Hook Young",
+        "title": "What If There Was a Better Way?",
+        "body": "{{ip_description}}. People are calling {{ip_name}} a game-changer. Find out why.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Middle / Problem-Aware",
+      "adset_index": 2,
+      "creative": {
+        "name": "{{ip_name}} - Problem Hook Middle",
+        "title": "Tired of the Same Old Problem?",
+        "body": "{{ip_description}} — finally, a solution that actually works. See how {{ip_name}} tackles the issue head-on.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Middle / Solution-Aware",
+      "adset_index": 2,
+      "creative": {
+        "name": "{{ip_name}} - Solution Hook Middle",
+        "title": "Meet {{ip_name}} — The Better Way",
+        "body": "{{ip_description}}. We built {{ip_name}} so you don't have to settle. See the difference for yourself.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Middle / Curiosity",
+      "adset_index": 2,
+      "creative": {
+        "name": "{{ip_name}} - Curiosity Hook Middle",
+        "title": "What If There Was a Better Way?",
+        "body": "{{ip_description}}. People are calling {{ip_name}} a game-changer. Find out why.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Senior / Problem-Aware",
+      "adset_index": 3,
+      "creative": {
+        "name": "{{ip_name}} - Problem Hook Senior",
+        "title": "Tired of the Same Old Problem?",
+        "body": "{{ip_description}} — finally, a solution that actually works. See how {{ip_name}} tackles the issue head-on.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Senior / Solution-Aware",
+      "adset_index": 3,
+      "creative": {
+        "name": "{{ip_name}} - Solution Hook Senior",
+        "title": "Meet {{ip_name}} — The Better Way",
+        "body": "{{ip_description}}. We built {{ip_name}} so you don't have to settle. See the difference for yourself.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    },
+    {
+      "name": "{{ip_name}} - Senior / Curiosity",
+      "adset_index": 3,
+      "creative": {
+        "name": "{{ip_name}} - Curiosity Hook Senior",
+        "title": "What If There Was a Better Way?",
+        "body": "{{ip_description}}. People are calling {{ip_name}} a game-changer. Find out why.",
+        "link_url": "{{landing_url}}",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}
