@@ -1,0 +1,37 @@
+{
+  "name": "Test Template",
+  "variables": {
+    "product": { "type": "string", "default": "TestProduct" },
+    "budget": { "type": "number", "default": 1000 }
+  },
+  "campaign": {
+    "name": "{{product}} Campaign",
+    "objective": "OUTCOME_TRAFFIC",
+    "special_ad_categories": ["NONE"],
+    "status": "PAUSED"
+  },
+  "adsets": [
+    {
+      "name": "{{product}} Ad Set",
+      "billing_event": "IMPRESSIONS",
+      "optimization_goal": "LINK_CLICKS",
+      "daily_budget": "{{budget}}",
+      "targeting": { "geo_locations": { "countries": ["US"] } },
+      "status": "PAUSED"
+    }
+  ],
+  "ads": [
+    {
+      "name": "{{product}} Ad",
+      "adset_index": 0,
+      "creative": {
+        "name": "{{product}} Creative",
+        "title": "Buy {{product}}",
+        "body": "Get {{product}} today",
+        "link_url": "https://example.com",
+        "call_to_action_type": "LEARN_MORE"
+      },
+      "status": "PAUSED"
+    }
+  ]
+}

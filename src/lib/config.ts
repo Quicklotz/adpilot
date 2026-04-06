@@ -10,6 +10,9 @@ export interface AdPilotConfig {
   defaultOutputFormat: 'table' | 'json';
   pageSize: number;
   activeProfile?: string;
+  appId?: string;
+  appSecret?: string;
+  tokenExpiresAt?: number; // Unix timestamp (seconds) when the token expires
 }
 
 export interface Profile {
@@ -89,6 +92,9 @@ export function getConfig(): AdPilotConfig {
     defaultOutputFormat: config.get('defaultOutputFormat'),
     pageSize: config.get('pageSize'),
     activeProfile: config.get('activeProfile'),
+    appId: config.get('appId'),
+    appSecret: config.get('appSecret'),
+    tokenExpiresAt: config.get('tokenExpiresAt'),
   };
 }
 
@@ -119,6 +125,26 @@ export function getToken(): string {
       'No access token configured. Run `adpilot auth login` or set ADPILOT_TOKEN / FACEBOOK_ACCESS_TOKEN env var.'
     );
   }
+
+  // Check token expiry if we have a stored expiry timestamp
+  const expiresAt = config.get('tokenExpiresAt');
+  if (expiresAt) {
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (nowSec >= expiresAt) {
+      throw new AuthError(
+        'Token expired. Run `adpilot auth refresh` or `adpilot auth oauth` to get a new token.'
+      );
+    }
+    // Warn if token expires within 24 hours
+    const twentyFourHours = 24 * 60 * 60;
+    if (expiresAt - nowSec < twentyFourHours) {
+      const hoursLeft = Math.round((expiresAt - nowSec) / 3600 * 10) / 10;
+      process.stderr.write(
+        `Warning: Token expires in ${hoursLeft} hour(s). Run \`adpilot auth refresh\` to extend it.\n`
+      );
+    }
+  }
+
   return token;
 }
 

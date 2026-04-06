@@ -32,6 +32,7 @@ import { registerBudgetCommands } from './commands/budget';
 import { registerLeadsCommands } from './commands/leads';
 import { registerSplitsCommands } from './commands/splits';
 import { registerTargetingCommands } from './commands/targeting';
+import { registerWebhookCommands } from './commands/webhooks';
 import { AdPilotError, ExitCode } from './utils/errors';
 
 const program = new Command();
@@ -81,6 +82,7 @@ registerBudgetCommands(program);
 registerLeadsCommands(program);
 registerSplitsCommands(program);
 registerTargetingCommands(program);
+registerWebhookCommands(program);
 
 // Global error handling
 program.exitOverride();

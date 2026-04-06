@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { apiGet } from '../lib/api';
+import { apiGet, apiPost, fetchAllPages } from '../lib/api';
 import { getAdAccountId } from '../lib/config';
 import {
   listSavedReports,
@@ -9,7 +9,7 @@ import {
   deleteReport,
   SavedReport,
 } from '../lib/reports';
-import { output, printTable, success, error, info, writeCsv } from '../utils/output';
+import { output, printTable, printRecord, success, error, info, warn, writeCsv } from '../utils/output';
 import { createSpinner, buildFieldsParam } from '../utils/helpers';
 
 // --- Metric direction for comparative reporting ---
@@ -351,6 +351,308 @@ export function registerReportsCommands(program: Command): void {
 
         const title = `Comparison: ${since1} to ${until1}  vs  ${since2} to ${until2}`;
         printTable(headers, rows, title);
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── reports async ──────────────────────────────────────────────────────
+  reports
+    .command('async')
+    .description('Request a large async insights report')
+    .requiredOption('--level <level>', 'Aggregation level: account, campaign, adset, ad')
+    .requiredOption('--fields <fields>', 'Comma-separated metrics')
+    .option('--date-preset <preset>', 'Date preset')
+    .option('--since <date>', 'Start date (YYYY-MM-DD)')
+    .option('--until <date>', 'End date (YYYY-MM-DD)')
+    .option('--breakdowns <breakdowns>', 'Comma-separated breakdowns')
+    .option('--account-id <id>', 'Ad account ID')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const spinner = createSpinner('Requesting async report...');
+      spinner.start();
+      try {
+        const validLevels = ['account', 'campaign', 'adset', 'ad'];
+        if (!validLevels.includes(opts.level)) {
+          spinner.stop();
+          error(`Invalid level "${opts.level}". Must be one of: ${validLevels.join(', ')}`);
+          process.exit(1);
+          return;
+        }
+
+        const accountId = opts.accountId || getAdAccountId();
+
+        const body: Record<string, any> = {
+          fields: opts.fields,
+          level: opts.level,
+          is_async: true,
+        };
+
+        if (opts.since && opts.until) {
+          body.time_range = JSON.stringify({ since: opts.since, until: opts.until });
+        } else if (opts.datePreset) {
+          body.date_preset = opts.datePreset;
+        }
+
+        if (opts.breakdowns) {
+          body.breakdowns = opts.breakdowns;
+        }
+
+        const data = await apiPost(`${accountId}/insights`, body);
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          const reportRunId = data.report_run_id || data.id;
+          if (reportRunId) {
+            success(`Async report requested. Report Run ID: ${reportRunId}`);
+            info(`Check status: adpilot reports async-status ${reportRunId}`);
+            info(`Wait & download: adpilot reports async-wait ${reportRunId}`);
+          } else {
+            warn('Report request submitted but no report_run_id was returned.');
+            output(data, 'json');
+          }
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── reports async-status ───────────────────────────────────────────────
+  reports
+    .command('async-status <reportRunId>')
+    .description('Check the status of an async report')
+    .option('--json', 'Output as JSON')
+    .action(async (reportRunId, opts) => {
+      const spinner = createSpinner('Checking report status...');
+      spinner.start();
+      try {
+        const data = await apiGet(reportRunId, {
+          fields: 'id,async_status,async_percent_completion,date_start,date_stop',
+        });
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          const statusStr = data.async_status || 'Unknown';
+          const pct = data.async_percent_completion ?? '-';
+
+          let coloredStatus: string;
+          switch (statusStr) {
+            case 'Job Completed':
+              coloredStatus = chalk.green(statusStr);
+              break;
+            case 'Job Failed':
+            case 'Job Skipped':
+              coloredStatus = chalk.red(statusStr);
+              break;
+            case 'Job Running':
+            case 'Job Started':
+              coloredStatus = chalk.yellow(statusStr);
+              break;
+            default:
+              coloredStatus = chalk.gray(statusStr);
+          }
+
+          printRecord(
+            {
+              'Report Run ID': data.id || reportRunId,
+              'Status': coloredStatus,
+              'Completion': `${pct}%`,
+              'Date Start': data.date_start || '-',
+              'Date Stop': data.date_stop || '-',
+            },
+            'Async Report Status'
+          );
+
+          if (statusStr === 'Job Completed') {
+            info(`Download: adpilot reports async-download ${reportRunId}`);
+          }
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── reports async-download ─────────────────────────────────────────────
+  reports
+    .command('async-download <reportRunId>')
+    .description('Download the results of a completed async report')
+    .option('--csv <file>', 'Export to CSV file')
+    .option('--json', 'Output as JSON')
+    .action(async (reportRunId, opts) => {
+      const spinner = createSpinner('Downloading async report...');
+      spinner.start();
+      try {
+        const allResults = await fetchAllPages(
+          `${reportRunId}/insights`,
+          { limit: 500 },
+          50
+        );
+        spinner.stop();
+
+        if (allResults.length === 0) {
+          warn('Report returned no data.');
+          return;
+        }
+
+        if (opts.csv) {
+          const fieldKeys = Object.keys(allResults[0]);
+          const csvHeaders = fieldKeys;
+          const csvRows = allResults.map((row: any) =>
+            fieldKeys.map((f) => {
+              const val = row[f];
+              if (typeof val === 'object' && val !== null) {
+                return JSON.stringify(val);
+              }
+              return val ?? '';
+            })
+          );
+          writeCsv(opts.csv, csvHeaders, csvRows);
+          success(`Wrote ${csvRows.length} row(s) to ${opts.csv}`);
+        } else if (opts.json) {
+          output(allResults, 'json');
+        } else {
+          const fieldKeys = Object.keys(allResults[0]);
+          const tableRows = allResults.map((row: any) =>
+            fieldKeys.map((f) => {
+              const val = row[f];
+              if (typeof val === 'object' && val !== null) {
+                if (Array.isArray(val)) {
+                  return val
+                    .slice(0, 3)
+                    .map((a: any) => `${a.action_type}: ${a.value}`)
+                    .join(', ');
+                }
+                return JSON.stringify(val);
+              }
+              return val ?? '-';
+            })
+          );
+          printTable(fieldKeys, tableRows, `Async Report Results (${allResults.length} rows)`);
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── reports async-wait ─────────────────────────────────────────────────
+  reports
+    .command('async-wait <reportRunId>')
+    .description('Poll for async report completion and then download results')
+    .option('--timeout <seconds>', 'Max wait time in seconds', '300')
+    .option('--csv <file>', 'Export to CSV file')
+    .option('--json', 'Output as JSON')
+    .action(async (reportRunId, opts) => {
+      const timeout = parseInt(opts.timeout, 10) * 1000;
+      const pollInterval = 5000; // 5 seconds
+      const startTime = Date.now();
+
+      const spinner = createSpinner('Waiting for async report to complete...');
+      spinner.start();
+
+      try {
+        let completed = false;
+        let lastStatus = '';
+
+        while (Date.now() - startTime < timeout) {
+          const data = await apiGet(reportRunId, {
+            fields: 'id,async_status,async_percent_completion',
+          });
+
+          const status = data.async_status || 'Unknown';
+          const pct = data.async_percent_completion ?? 0;
+
+          if (status !== lastStatus) {
+            spinner.text = `Report status: ${status} (${pct}%)`;
+            lastStatus = status;
+          }
+
+          if (status === 'Job Completed') {
+            completed = true;
+            break;
+          }
+
+          if (status === 'Job Failed' || status === 'Job Skipped') {
+            spinner.stop();
+            error(`Report ${status.toLowerCase()}. Report Run ID: ${reportRunId}`);
+            process.exit(1);
+            return;
+          }
+
+          // Wait before next poll
+          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        }
+
+        if (!completed) {
+          spinner.stop();
+          error(`Timed out after ${opts.timeout}s. Report may still be processing.`);
+          info(`Check status: adpilot reports async-status ${reportRunId}`);
+          process.exit(1);
+          return;
+        }
+
+        spinner.text = 'Downloading report results...';
+
+        const allResults = await fetchAllPages(
+          `${reportRunId}/insights`,
+          { limit: 500 },
+          50
+        );
+        spinner.stop();
+
+        if (allResults.length === 0) {
+          warn('Report completed but returned no data.');
+          return;
+        }
+
+        success(`Report completed. ${allResults.length} row(s) returned.`);
+
+        if (opts.csv) {
+          const fieldKeys = Object.keys(allResults[0]);
+          const csvHeaders = fieldKeys;
+          const csvRows = allResults.map((row: any) =>
+            fieldKeys.map((f) => {
+              const val = row[f];
+              if (typeof val === 'object' && val !== null) {
+                return JSON.stringify(val);
+              }
+              return val ?? '';
+            })
+          );
+          writeCsv(opts.csv, csvHeaders, csvRows);
+          success(`Wrote ${csvRows.length} row(s) to ${opts.csv}`);
+        } else if (opts.json) {
+          output(allResults, 'json');
+        } else {
+          const fieldKeys = Object.keys(allResults[0]);
+          const tableRows = allResults.map((row: any) =>
+            fieldKeys.map((f) => {
+              const val = row[f];
+              if (typeof val === 'object' && val !== null) {
+                if (Array.isArray(val)) {
+                  return val
+                    .slice(0, 3)
+                    .map((a: any) => `${a.action_type}: ${a.value}`)
+                    .join(', ');
+                }
+                return JSON.stringify(val);
+              }
+              return val ?? '-';
+            })
+          );
+          printTable(fieldKeys, tableRows, `Async Report Results (${allResults.length} rows)`);
+        }
       } catch (err: any) {
         spinner.stop();
         error(err.message);

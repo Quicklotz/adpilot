@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { apiGet, apiPost, apiDelete } from '../lib/api';
 import { getAdAccountId } from '../lib/config';
-import { output, printRecord, printTable, success, error } from '../utils/output';
+import { output, printRecord, printTable, success, error, info } from '../utils/output';
 import {
   createSpinner,
   formatBudget,
@@ -335,4 +335,158 @@ export function registerAdSetCommands(program: Command): void {
         process.exit(1);
       }
     });
+
+  // SET-SCHEDULE (Dayparting)
+  adsets
+    .command('set-schedule <adSetId>')
+    .description('Set a delivery schedule (dayparting) for an ad set')
+    .option('--schedule <json>', 'Schedule spec as JSON array')
+    .option('--days <days>', 'Comma-separated day numbers (0=Sun, 1=Mon, ..., 6=Sat)')
+    .option('--start-minute <min>', 'Start minute of day (0-1439)', '0')
+    .option('--end-minute <min>', 'End minute of day (0-1439)', '1439')
+    .option('--timezone <type>', 'Timezone type: USER or ADVERTISER', 'ADVERTISER')
+    .option('--json', 'Output as JSON')
+    .action(async (adSetId, opts) => {
+      const spinner = createSpinner('Setting ad set schedule...');
+      spinner.start();
+      try {
+        let schedule: any[];
+
+        if (opts.schedule) {
+          // Use the raw JSON schedule provided
+          try {
+            schedule = JSON.parse(opts.schedule);
+          } catch {
+            spinner.stop();
+            error('Invalid JSON for --schedule. Expected a JSON array of schedule entries.');
+            process.exit(1);
+            return;
+          }
+          if (!Array.isArray(schedule)) {
+            spinner.stop();
+            error('--schedule must be a JSON array.');
+            process.exit(1);
+            return;
+          }
+        } else {
+          // Build schedule from individual options
+          const days = opts.days
+            ? opts.days.split(',').map((d: string) => parseInt(d.trim(), 10))
+            : [1, 2, 3, 4, 5]; // Default: weekdays
+
+          const startMinute = parseInt(opts.startMinute, 10);
+          const endMinute = parseInt(opts.endMinute, 10);
+
+          if (isNaN(startMinute) || startMinute < 0 || startMinute > 1439) {
+            spinner.stop();
+            error('--start-minute must be between 0 and 1439.');
+            process.exit(1);
+            return;
+          }
+          if (isNaN(endMinute) || endMinute < 0 || endMinute > 1439) {
+            spinner.stop();
+            error('--end-minute must be between 0 and 1439.');
+            process.exit(1);
+            return;
+          }
+
+          for (const day of days) {
+            if (isNaN(day) || day < 0 || day > 6) {
+              spinner.stop();
+              error('--days must be comma-separated numbers 0-6 (0=Sun, 1=Mon, ..., 6=Sat).');
+              process.exit(1);
+              return;
+            }
+          }
+
+          const timezoneType = opts.timezone.toUpperCase();
+          if (timezoneType !== 'USER' && timezoneType !== 'ADVERTISER') {
+            spinner.stop();
+            error('--timezone must be USER or ADVERTISER.');
+            process.exit(1);
+            return;
+          }
+
+          schedule = [
+            {
+              start_minute: startMinute,
+              end_minute: endMinute,
+              days: days,
+              timezone_type: timezoneType,
+            },
+          ];
+        }
+
+        const data = await apiPost(adSetId, { adset_schedule: schedule });
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          success(`Delivery schedule set for ad set ${adSetId}.`);
+          formatScheduleDisplay(schedule);
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // GET-SCHEDULE
+  adsets
+    .command('get-schedule <adSetId>')
+    .description('Get the current delivery schedule for an ad set')
+    .option('--json', 'Output as JSON')
+    .action(async (adSetId, opts) => {
+      const spinner = createSpinner('Fetching ad set schedule...');
+      spinner.start();
+      try {
+        const data = await apiGet(adSetId, { fields: 'id,name,adset_schedule' });
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          const schedule = data.adset_schedule;
+          if (!schedule || (Array.isArray(schedule) && schedule.length === 0)) {
+            info(`Ad set ${adSetId} (${data.name || 'unknown'}) has no delivery schedule (runs all day).`);
+            return;
+          }
+
+          console.log('');
+          success(`Schedule for ad set ${adSetId} (${data.name || 'unknown'}):`);
+          formatScheduleDisplay(Array.isArray(schedule) ? schedule : [schedule]);
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function minuteToTime(minute: number): string {
+  const hours = Math.floor(minute / 60);
+  const mins = minute % 60;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  return `${displayHour}:${mins.toString().padStart(2, '0')} ${period}`;
+}
+
+function formatScheduleDisplay(schedule: any[]): void {
+  for (const entry of schedule) {
+    const days = (entry.days || [])
+      .map((d: number) => DAY_NAMES[d] || `Day ${d}`)
+      .join(', ');
+    const start = minuteToTime(entry.start_minute ?? 0);
+    const end = minuteToTime(entry.end_minute ?? 1439);
+    const tz = entry.timezone_type || 'ADVERTISER';
+    console.log(`  Days: ${days}`);
+    console.log(`  Time: ${start} - ${end}`);
+    console.log(`  Timezone: ${tz}`);
+    console.log('');
+  }
 }

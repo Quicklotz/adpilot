@@ -4,7 +4,15 @@ import { apiGet, apiPost } from '../lib/api';
 import { getAdAccountId } from '../lib/config';
 import { listProjects, getProject } from '../lib/registry';
 import { printTable, printRecord, printJson, success, error, warn, info } from '../utils/output';
-import { createSpinner, formatBudget, DATE_PRESETS } from '../utils/helpers';
+import { createSpinner, formatBudget, formatDate, DATE_PRESETS } from '../utils/helpers';
+import {
+  listBudgetSchedules,
+  saveBudgetSchedule,
+  deleteBudgetSchedule,
+  updateBudgetSchedule,
+  BudgetSchedule,
+} from '../lib/budget-schedules';
+import { output } from '../utils/output';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -561,6 +569,276 @@ export function registerBudgetCommands(program: Command): void {
         );
       } catch (err: any) {
         spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── budget schedule ────────────────────────────────────────────────────
+  budget
+    .command('schedule')
+    .description('Set up a scheduled budget change for a campaign')
+    .requiredOption('--campaign-id <id>', 'Campaign ID')
+    .requiredOption('--budget <cents>', 'New daily budget in cents')
+    .requiredOption('--start-date <date>', 'When to apply the change (YYYY-MM-DD)')
+    .option('--end-date <date>', 'When to revert (YYYY-MM-DD)')
+    .option('--original-budget <cents>', 'Budget to revert to (required if end-date set)')
+    .option('--json', 'JSON output')
+    .action(async (opts) => {
+      try {
+        const newBudget = parseInt(opts.budget, 10);
+        if (isNaN(newBudget) || newBudget <= 0) {
+          error('--budget must be a positive integer (in cents).');
+          process.exit(1);
+          return;
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(opts.startDate)) {
+          error('--start-date must be in YYYY-MM-DD format.');
+          process.exit(1);
+          return;
+        }
+
+        if (opts.endDate) {
+          if (!dateRegex.test(opts.endDate)) {
+            error('--end-date must be in YYYY-MM-DD format.');
+            process.exit(1);
+            return;
+          }
+          if (!opts.originalBudget) {
+            error('--original-budget is required when --end-date is set.');
+            process.exit(1);
+            return;
+          }
+        }
+
+        const originalBudget = opts.originalBudget
+          ? parseInt(opts.originalBudget, 10)
+          : undefined;
+
+        const schedule: BudgetSchedule = {
+          id: `bs_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          campaignId: opts.campaignId,
+          newBudget,
+          originalBudget,
+          startDate: opts.startDate,
+          endDate: opts.endDate,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+
+        saveBudgetSchedule(schedule);
+
+        if (opts.json) {
+          output(schedule, 'json');
+        } else {
+          success(`Budget schedule created: ${schedule.id}`);
+          info(`Campaign: ${opts.campaignId}`);
+          info(`New budget: ${formatBudget(newBudget)} starting ${opts.startDate}`);
+          if (opts.endDate && originalBudget) {
+            info(`Reverts to ${formatBudget(originalBudget)} on ${opts.endDate}`);
+          }
+        }
+      } catch (err: any) {
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── budget schedule-list ───────────────────────────────────────────────
+  budget
+    .command('schedule-list')
+    .description('List all budget schedules')
+    .option('--json', 'JSON output')
+    .action(async (opts) => {
+      try {
+        const schedules = listBudgetSchedules();
+
+        if (schedules.length === 0) {
+          info('No budget schedules found. Use `adpilot budget schedule` to create one.');
+          return;
+        }
+
+        if (opts.json) {
+          output(schedules, 'json');
+          return;
+        }
+
+        const rows = schedules.map((s) => {
+          let statusStr: string;
+          switch (s.status) {
+            case 'pending':
+              statusStr = chalk.yellow('PENDING');
+              break;
+            case 'applied':
+              statusStr = chalk.green('APPLIED');
+              break;
+            case 'reverted':
+              statusStr = chalk.blue('REVERTED');
+              break;
+            case 'expired':
+              statusStr = chalk.gray('EXPIRED');
+              break;
+            default:
+              statusStr = s.status;
+          }
+
+          return [
+            s.id,
+            s.campaignId,
+            formatBudget(s.newBudget),
+            s.originalBudget ? formatBudget(s.originalBudget) : '-',
+            s.startDate,
+            s.endDate || '-',
+            statusStr,
+            s.createdAt.slice(0, 10),
+          ];
+        });
+
+        printTable(
+          ['ID', 'Campaign', 'New Budget', 'Revert Budget', 'Start', 'End', 'Status', 'Created'],
+          rows,
+          'Budget Schedules'
+        );
+      } catch (err: any) {
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── budget schedule-apply ──────────────────────────────────────────────
+  budget
+    .command('schedule-apply')
+    .description('Check and apply/revert all pending budget schedules whose dates have passed')
+    .option('--json', 'JSON output')
+    .action(async (opts) => {
+      const spinner = createSpinner('Checking budget schedules...');
+      spinner.start();
+      try {
+        const schedules = listBudgetSchedules();
+        const today = new Date().toISOString().slice(0, 10);
+
+        const actions: Array<{ id: string; action: string; campaignId: string; budget: number; success: boolean; error?: string }> = [];
+
+        for (const schedule of schedules) {
+          // Apply pending schedules whose start date has arrived
+          if (schedule.status === 'pending' && schedule.startDate <= today) {
+            try {
+              await apiPost(schedule.campaignId, {
+                daily_budget: String(schedule.newBudget),
+              });
+              updateBudgetSchedule(schedule.id, { status: 'applied' });
+              actions.push({
+                id: schedule.id,
+                action: 'applied',
+                campaignId: schedule.campaignId,
+                budget: schedule.newBudget,
+                success: true,
+              });
+            } catch (applyErr: any) {
+              actions.push({
+                id: schedule.id,
+                action: 'apply',
+                campaignId: schedule.campaignId,
+                budget: schedule.newBudget,
+                success: false,
+                error: applyErr.message,
+              });
+            }
+          }
+
+          // Revert applied schedules whose end date has arrived
+          if (
+            schedule.status === 'applied' &&
+            schedule.endDate &&
+            schedule.endDate <= today &&
+            schedule.originalBudget
+          ) {
+            try {
+              await apiPost(schedule.campaignId, {
+                daily_budget: String(schedule.originalBudget),
+              });
+              updateBudgetSchedule(schedule.id, { status: 'reverted' });
+              actions.push({
+                id: schedule.id,
+                action: 'reverted',
+                campaignId: schedule.campaignId,
+                budget: schedule.originalBudget,
+                success: true,
+              });
+            } catch (revertErr: any) {
+              actions.push({
+                id: schedule.id,
+                action: 'revert',
+                campaignId: schedule.campaignId,
+                budget: schedule.originalBudget!,
+                success: false,
+                error: revertErr.message,
+              });
+            }
+          }
+
+          // Mark applied schedules with no end date as expired if start has passed
+          if (
+            schedule.status === 'applied' &&
+            !schedule.endDate
+          ) {
+            updateBudgetSchedule(schedule.id, { status: 'expired' });
+          }
+        }
+
+        spinner.stop();
+
+        if (opts.json) {
+          output(actions, 'json');
+          return;
+        }
+
+        if (actions.length === 0) {
+          info('No budget schedules to apply or revert today.');
+          return;
+        }
+
+        const rows = actions.map((a) => [
+          a.id,
+          a.campaignId,
+          a.action.toUpperCase(),
+          formatBudget(a.budget),
+          a.success ? chalk.green('OK') : chalk.red(a.error || 'FAILED'),
+        ]);
+
+        printTable(
+          ['Schedule ID', 'Campaign', 'Action', 'Budget', 'Result'],
+          rows,
+          'Budget Schedule Actions'
+        );
+
+        const applied = actions.filter((a) => a.success).length;
+        const failed = actions.filter((a) => !a.success).length;
+        if (applied > 0) success(`${applied} schedule action(s) completed.`);
+        if (failed > 0) error(`${failed} schedule action(s) failed.`);
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // ── budget schedule-delete ─────────────────────────────────────────────
+  budget
+    .command('schedule-delete <scheduleId>')
+    .description('Delete a budget schedule')
+    .action(async (scheduleId) => {
+      try {
+        const deleted = deleteBudgetSchedule(scheduleId);
+        if (deleted) {
+          success(`Budget schedule "${scheduleId}" deleted.`);
+        } else {
+          error(`Budget schedule "${scheduleId}" not found.`);
+          process.exit(1);
+        }
+      } catch (err: any) {
         error(err.message);
         process.exit(1);
       }

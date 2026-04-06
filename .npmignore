@@ -1,6 +1,11 @@
 src/
-tsconfig.json
-.github/
+tests/
+scripts/
+homebrew/
 examples/
+.github/
+tsconfig.json
+jest.config.js
 *.ts
 !dist/**
+.DS_Store

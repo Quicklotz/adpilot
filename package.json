@@ -11,6 +11,8 @@
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
+    "test": "NODE_OPTIONS='--localstorage-file=/tmp/adpilot-jest-ls' jest",
+    "test:coverage": "NODE_OPTIONS='--localstorage-file=/tmp/adpilot-jest-ls' jest --coverage",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -36,10 +38,27 @@
   },
   "devDependencies": {
     "@types/inquirer": "^8.2.10",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.14.0",
     "@types/node-fetch": "^2.6.11",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.5.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/connorodea/adpilot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/connorodea/adpilot/issues"
+  },
+  "homepage": "https://github.com/connorodea/adpilot#readme",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=16.0.0"
   }
