@@ -9,6 +9,16 @@ export interface AdPilotConfig {
   apiVersion: string;
   defaultOutputFormat: 'table' | 'json';
   pageSize: number;
+  activeProfile?: string;
+}
+
+export interface Profile {
+  name: string;
+  accessToken: string;
+  adAccountId: string;
+  apiVersion?: string;
+  description?: string;
+  createdAt: string;
 }
 
 const configDir = path.join(os.homedir(), '.adpilot');
@@ -23,6 +33,54 @@ const config = new Conf<AdPilotConfig>({
   },
 });
 
+const profileStore = new Conf<Record<string, Profile>>({
+  projectName: 'adpilot-profiles',
+  cwd: configDir,
+  defaults: {},
+});
+
+// --- Profile management ---
+
+export function listProfiles(): Profile[] {
+  const all = profileStore.store;
+  return Object.values(all);
+}
+
+export function getProfile(name: string): Profile | undefined {
+  return profileStore.get(name) as Profile | undefined;
+}
+
+export function saveProfile(profile: Profile): void {
+  profileStore.set(profile.name, profile);
+}
+
+export function deleteProfile(name: string): void {
+  profileStore.delete(name);
+  // If the deleted profile was active, clear the active profile setting
+  if (config.get('activeProfile') === name) {
+    config.delete('activeProfile');
+  }
+}
+
+export function getActiveProfileName(): string | undefined {
+  return config.get('activeProfile');
+}
+
+export function switchProfile(name: string): void {
+  const profile = getProfile(name);
+  if (!profile) {
+    throw new AuthError(`Profile "${name}" does not exist. Run \`adpilot auth profiles list\` to see available profiles.`);
+  }
+  config.set('activeProfile', name);
+  config.set('accessToken', profile.accessToken);
+  config.set('adAccountId', profile.adAccountId);
+  if (profile.apiVersion) {
+    config.set('apiVersion', profile.apiVersion);
+  }
+}
+
+// --- Config accessors ---
+
 export function getConfig(): AdPilotConfig {
   return {
     accessToken: config.get('accessToken'),
@@ -30,6 +88,7 @@ export function getConfig(): AdPilotConfig {
     apiVersion: process.env.ADPILOT_API_VERSION || config.get('apiVersion'),
     defaultOutputFormat: config.get('defaultOutputFormat'),
     pageSize: config.get('pageSize'),
+    activeProfile: config.get('activeProfile'),
   };
 }
 
@@ -42,6 +101,15 @@ export function clearConfig(): void {
 }
 
 export function getToken(): string {
+  // Check active profile first
+  const activeProfileName = config.get('activeProfile');
+  if (activeProfileName) {
+    const profile = getProfile(activeProfileName);
+    if (profile?.accessToken) {
+      return profile.accessToken;
+    }
+  }
+
   const token =
     config.get('accessToken') ||
     process.env.ADPILOT_TOKEN ||
@@ -55,6 +123,16 @@ export function getToken(): string {
 }
 
 export function getAdAccountId(): string {
+  // Check active profile first
+  const activeProfileName = config.get('activeProfile');
+  if (activeProfileName) {
+    const profile = getProfile(activeProfileName);
+    if (profile?.adAccountId) {
+      const id = profile.adAccountId;
+      return id.startsWith('act_') ? id : `act_${id}`;
+    }
+  }
+
   const id =
     config.get('adAccountId') ||
     process.env.ADPILOT_ACCOUNT_ID ||
@@ -67,4 +145,4 @@ export function getAdAccountId(): string {
   return id.startsWith('act_') ? id : `act_${id}`;
 }
 
-export { config };
+export { config, profileStore };

@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Command } from 'commander';
 import { apiGet, apiPost, apiDelete } from '../lib/api';
 import { getAdAccountId } from '../lib/config';
@@ -268,6 +270,230 @@ export function registerCreativeCommands(program: Command): void {
           for (const preview of previews) {
             console.log(preview.body);
           }
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // CREATE DYNAMIC CREATIVE
+  creatives
+    .command('create-dynamic')
+    .description(
+      'Create a dynamic creative with asset feed spec for automatic variant testing'
+    )
+    .requiredOption('-n, --name <name>', 'Creative name')
+    .requiredOption('--page-id <id>', 'Facebook Page ID')
+    .requiredOption(
+      '--images <hashes>',
+      'Comma-separated image hashes (at least 1)'
+    )
+    .requiredOption(
+      '--titles <titles>',
+      'Pipe-separated title variants (e.g. "Title A|Title B")'
+    )
+    .requiredOption(
+      '--bodies <bodies>',
+      'Pipe-separated body text variants (e.g. "Body A|Body B")'
+    )
+    .option(
+      '--descriptions <descs>',
+      'Pipe-separated link description variants'
+    )
+    .option(
+      '--ctas <types>',
+      'Comma-separated CTA types (default: LEARN_MORE)',
+      'LEARN_MORE'
+    )
+    .requiredOption('--link-url <url>', 'Destination URL')
+    .option('--account-id <id>', 'Ad account ID')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const spinner = createSpinner('Creating dynamic creative...');
+      spinner.start();
+      try {
+        const accountId = opts.accountId || getAdAccountId();
+
+        const imageHashes = (opts.images as string)
+          .split(',')
+          .map((h: string) => h.trim())
+          .filter(Boolean);
+        if (imageHashes.length === 0) {
+          throw new Error('At least one image hash is required via --images');
+        }
+
+        const titles = (opts.titles as string)
+          .split('|')
+          .map((t: string) => t.trim())
+          .filter(Boolean);
+        const bodies = (opts.bodies as string)
+          .split('|')
+          .map((b: string) => b.trim())
+          .filter(Boolean);
+
+        const descriptions = opts.descriptions
+          ? (opts.descriptions as string)
+              .split('|')
+              .map((d: string) => d.trim())
+              .filter(Boolean)
+          : [];
+
+        const ctaTypes = (opts.ctas as string)
+          .split(',')
+          .map((c: string) => c.trim())
+          .filter(Boolean);
+
+        const linkUrl: string = opts.linkUrl;
+
+        const assetFeedSpec: Record<string, any> = {
+          images: imageHashes.map((hash: string) => ({ hash })),
+          titles: titles.map((text: string) => ({ text })),
+          bodies: bodies.map((text: string) => ({ text })),
+          call_to_action_types: ctaTypes.map((cta: string) => ({
+            value: { link: linkUrl },
+          })),
+          link_urls: [{ website_url: linkUrl }],
+          ad_formats: ['SINGLE_IMAGE'],
+        };
+
+        if (descriptions.length > 0) {
+          assetFeedSpec.descriptions = descriptions.map((text: string) => ({
+            text,
+          }));
+        }
+
+        const body: Record<string, any> = {
+          name: opts.name,
+          object_story_spec: JSON.stringify({ page_id: opts.pageId }),
+          asset_feed_spec: JSON.stringify(assetFeedSpec),
+        };
+
+        const data = await apiPost(`${accountId}/adcreatives`, body);
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          success(`Dynamic creative created with ID: ${data.id}`);
+          printRecord(
+            {
+              id: data.id,
+              name: opts.name,
+              images: imageHashes.length,
+              titles: titles.length,
+              bodies: bodies.length,
+              descriptions: descriptions.length,
+              ctas: ctaTypes.join(', '),
+              linkUrl,
+            },
+            'Dynamic Creative'
+          );
+        }
+      } catch (err: any) {
+        spinner.stop();
+        error(err.message);
+        process.exit(1);
+      }
+    });
+
+  // CREATE CAROUSEL
+  creatives
+    .command('create-carousel')
+    .description('Create a carousel ad creative with multiple cards')
+    .requiredOption('-n, --name <name>', 'Creative name')
+    .requiredOption('--page-id <id>', 'Facebook Page ID')
+    .option('--message <text>', 'Top-level message text')
+    .option('--link <url>', 'See more URL')
+    .option(
+      '--cards <json>',
+      'JSON array of cards: [{"title":"...","description":"...","image_hash":"...","link":"...","call_to_action":{"type":"LEARN_MORE"}}]'
+    )
+    .option('--cards-file <file>', 'Load cards from a JSON file instead')
+    .option('--account-id <id>', 'Ad account ID')
+    .option('--json', 'Output as JSON')
+    .action(async (opts) => {
+      const spinner = createSpinner('Creating carousel creative...');
+      spinner.start();
+      try {
+        const accountId = opts.accountId || getAdAccountId();
+
+        let cards: any[];
+
+        if (opts.cardsFile) {
+          const resolvedPath = path.resolve(opts.cardsFile);
+          if (!fs.existsSync(resolvedPath)) {
+            throw new Error(`Cards file not found: ${resolvedPath}`);
+          }
+          const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
+          cards = JSON.parse(fileContent);
+        } else if (opts.cards) {
+          cards = JSON.parse(opts.cards);
+        } else {
+          throw new Error(
+            'Either --cards or --cards-file is required for carousel creative'
+          );
+        }
+
+        if (!Array.isArray(cards) || cards.length < 2) {
+          throw new Error(
+            'Carousel requires at least 2 cards. Provide a JSON array.'
+          );
+        }
+
+        const childAttachments = cards.map((card: any, idx: number) => {
+          if (!card.image_hash) {
+            throw new Error(
+              `Card ${idx + 1} is missing required field "image_hash"`
+            );
+          }
+          const attachment: Record<string, any> = {
+            image_hash: card.image_hash,
+          };
+          if (card.title) attachment.name = card.title;
+          if (card.name) attachment.name = card.name;
+          if (card.description) attachment.description = card.description;
+          if (card.link) attachment.link = card.link;
+          if (card.call_to_action) {
+            attachment.call_to_action = card.call_to_action;
+          }
+          return attachment;
+        });
+
+        const linkData: Record<string, any> = {
+          child_attachments: childAttachments,
+        };
+        if (opts.message) linkData.message = opts.message;
+        if (opts.link) linkData.link = opts.link;
+
+        const objectStorySpec = {
+          page_id: opts.pageId,
+          link_data: linkData,
+        };
+
+        const body: Record<string, any> = {
+          name: opts.name,
+          object_story_spec: JSON.stringify(objectStorySpec),
+        };
+
+        const data = await apiPost(`${accountId}/adcreatives`, body);
+        spinner.stop();
+
+        if (opts.json) {
+          output(data, 'json');
+        } else {
+          success(`Carousel creative created with ID: ${data.id}`);
+          printRecord(
+            {
+              id: data.id,
+              name: opts.name,
+              cards: childAttachments.length,
+              message: opts.message || '-',
+              seeMoreUrl: opts.link || '-',
+            },
+            'Carousel Creative'
+          );
         }
       } catch (err: any) {
         spinner.stop();
